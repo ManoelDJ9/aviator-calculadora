@@ -1,11 +1,24 @@
 const path = require("path");
-const { app, BrowserWindow, BrowserView, session, shell } = require("electron");
+const fs = require("fs");
+const { app, BrowserWindow, BrowserView, session, shell, dialog } = require("electron");
 
 let win;
 let leftView;
 let rightView;
+let GAME_URL;
 
-const GAME_URL = "https://sortenabet.bet.br/games/spribe/aviator"; 
+try {
+  const configPath = path.join(__dirname, "config.json");
+  const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  GAME_URL = config.GAME_URL;
+} catch (error) {
+  dialog.showErrorBox(
+    "Erro de Configuração",
+    "Não foi possível ler o arquivo de configuração (config.json) ou a GAME_URL não foi encontrada. Verifique se o arquivo existe e está no formato JSON correto."
+  );
+  app.quit();
+}
+
 // Se você já tiver a URL final do Spribe com token (aviator-next.spribegaming.com/?user=...&token=...),
 // pode trocar aqui e melhora MUITO a chance de funcionar direto.
 
@@ -73,7 +86,7 @@ function createWindow() {
   rightView.webContents.loadURL(GAME_URL, {
     // userAgent opcional: às vezes melhora compatibilidade com algumas plataformas
     userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+      "Mozilla.5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
   });
 
   // Se o site tentar abrir popups/novas abas, a gente pode mandar abrir no navegador padrão:
