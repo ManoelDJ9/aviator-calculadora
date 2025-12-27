@@ -33,7 +33,7 @@
 - Calculadora (esquerda):
   `renderer/calc.html`
 - Aviator (direita):
-  `main.js` -> constante `GAME_URL`
+  `config.json` -> chave `GAME_URL`
 
 ## Observação importante sobre login
 - Se o site exigir login, você vai logar DENTRO do painel da direita.
@@ -49,7 +49,7 @@ Existem 3 motivos comuns:
 Nesse caso, a solução mais forte é:
 - Abrir o Aviator no navegador,
 - pegar a URL final com token (a que você mostrou no iframe),
-- colar no `GAME_URL` do main.js.
+- colar no `GAME_URL` do `config.json`.
 Isso normalmente faz o jogo carregar direto.
 
 ## Objetivo do projeto
