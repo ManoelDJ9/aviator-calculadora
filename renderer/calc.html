@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculadora de Gestão</title>
+
+<style>
+  :root{
+    --bg:#0b0d14;
+    --text:#ffffff;
+    --muted:rgba(255,255,255,.65);
+    --line:rgba(255,255,255,.10);
+    --blue1:#6a11cb;
+    --blue2:#2575fc;
+    --green:#22c55e;
+    --red:#ef4444;
+    --yellow:#fbbf24;
+    --neutral:#9ca3af;
+    --shadow: 0 14px 40px rgba(0,0,0,.45);
+
+    /* Zoom interno (não é zoom do navegador) */
+    --uiZoom: .80;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    font-family: Arial, Helvetica, sans-serif;
+    background:
+      radial-gradient(1200px 700px at 50% 0%, rgba(37,117,252,.15), transparent 60%),
+      radial-gradient(900px 600px at 0% 100%, rgba(106,17,203,.10), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+
+  header{
+    background: linear-gradient(90deg, var(--blue1), var(--blue2));
+    padding: 12px 14px;
+    position: sticky;
+    top:0;
+    z-index:10;
+  }
+
+  .headerRow{
+    width: 100%;
+    margin: 0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .headerTitle{
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing:.8px;
+    text-align:left;
+    flex:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .zoomBox{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:0 0 auto;
+  }
+
+  .pill{
+    padding:6px 10px;
+    border-radius:999px;
+    background: rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.14);
+    font-size: 12px;
+    color: rgba(255,255,255,.85);
+    display:inline-flex;
+    gap:8px;
+    align-items:center;
+    white-space:nowrap;
+  }
+
+  .zoomBtn{
+    border:none;
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor:pointer;
+    font-weight: 900;
+    letter-spacing:.2px;
+    background: rgba(0,0,0,.22);
+    color: #fff;
+    border:1px solid rgba(255,255,255,.16);
+  }
+  .zoomBtn.active{
+    outline:2px solid rgba(251,191,36,.35);
+    background: rgba(251,191,36,.18);
+  }
+
+  /* Zoom interno (Chrome/Edge) */
+  #app{ zoom: var(--uiZoom); }
+
+  /* Fallback (Firefox) */
+  @supports not (zoom: 1){
+    #app{
+      transform: scale(var(--uiZoom));
+      transform-origin: top left;
+      width: calc(100% / var(--uiZoom));
+      margin: 0;
+    }
+  }
+
+  .container{
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 14px;
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
+
+  /* Layout: esquerda calculadora / direita jogo */
+  .layout{
+    display:flex;
+    gap: 12px;
+    align-items:flex-start;
+    align-content:flex-start;
+    padding: 14px;
+  }
+  .appMain{ flex: 0 0 calc(50% - 6px); min-width: 340px; }
+
+  .sidebar{
+    flex: 0 0 calc(50% - 6px);
+    min-width:340px;
+    height: calc(100vh - 120px);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.02));
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,.45);
+    overflow: hidden;
+    padding: 12px;
+  }
+
+  .sidebarHead{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .sidebarHead .titleSmall{ margin:0; }
+  .sidebar .openBtn{
+    background: rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:700;
+    font-size:13px;
+  }
+  .iframeWrap{ height: calc(100% - 58px); }
+  .sidebar iframe{
+    width:100%;
+    height:100%;
+    border:none;
+    border-radius: 10px;
+    background:#000;
+    display:block;
+  }
+
+  @media (max-width: 960px){
+    .layout{ flex-direction: column; }
+    .appMain, .sidebar{ flex: 1 1 auto; width: 100%; min-width: 0; }
+    .sidebar{ height: 60vh; }
+  }
+
+  .gridTop{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .box{
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: var(--shadow);
+  }
+
+  .row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  .titleSmall{
+    font-size: 12px;
+    opacity:.80;
+    margin-bottom: 6px;
+  }
+
+  .saldoBig{
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing:.4px;
+  }
+
+  .entryInfo{
+    display:flex;
+    justify-content:space-between;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  input{
+    width:100%;
+    padding: 10px 10px;
+    background: rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius: 10px;
+    color: var(--text);
+    outline:none;
+  }
+  input:focus{
+    border-color: rgba(251,191,36,.55);
+    box-shadow: 0 0 0 3px rgba(251,191,36,.18);
+  }
+
+  button{
+    border:none;
+    border-radius: 12px;
+    padding: 12px 12px;
+    cursor:pointer;
+    font-weight: 900;
+    letter-spacing:.4px;
+    transition: .12s transform, .12s filter, .12s box-shadow;
+    user-select:none;
+  }
+  button:active{ transform: scale(.98); }
+  button:hover{ filter: brightness(1.05); }
+  button:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    transform:none;
+    filter:none;
+  }
+
+  .btnMeta{
+    flex:1;
+    background: rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color: var(--text);
+    padding: 10px 8px;
+  }
+  .btnMeta.active{
+    border-color: rgba(37,117,252,.9);
+    box-shadow: 0 0 0 3px rgba(37,117,252,.20);
+    background: rgba(37,117,252,.18);
+  }
+
+  .btnGreen{ background: var(--green); color:#06110a; }
+  .btnRed{ background: var(--red); color:#220606; }
+  .btnNeutral{ background: #6b7280; color:#0c0f16; }
+
+  .btnAction{
+    flex:1;
+    background: rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    color: var(--text);
+  }
+  .btnAction.active{
+    box-shadow: 0 0 0 3px rgba(255,255,255,.10);
+    filter: brightness(1.05);
+    outline: 2px solid rgba(251,191,36,.35);
+  }
+
+  .btnPlay{
+    width:100%;
+    background: linear-gradient(90deg, #ffd54a, var(--yellow));
+    color:#1a1200;
+    font-size: 18px;
+    padding: 14px;
+    margin-top: 10px;
+    box-shadow: 0 14px 40px rgba(251,191,36,.25);
+  }
+
+  .sectionHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom: 10px;
+  }
+
+  .calcLine{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .stat{
+    background: rgba(0,0,0,.20);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 10px;
+  }
+  .stat .k{ font-size: 12px; opacity:.7; }
+  .stat .v{ font-size: 16px; font-weight: 900; margin-top: 4px; }
+
+  .sameBlock{
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
+    border:1px solid rgba(255,255,255,.08);
+    border-radius: 16px;
+    padding: 12px;
+  }
+
+  .handRow{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .handCard{
+    background: rgba(0,0,0,.20);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .handTitle{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 10px;
+  }
+  .handTitle strong{ font-size: 14px; }
+  .handValue{
+    font-size: 22px;
+    font-weight: 900;
+    margin: 6px 0 10px;
+  }
+
+  .overlayStop{
+    position: fixed;
+    inset: 0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 999;
+    background:
+      radial-gradient(800px 500px at 50% 20%, rgba(255,0,0,.25), transparent 60%),
+      linear-gradient(180deg, #3b0000, #000000);
+  }
+  .stopBox{
+    width:min(720px, 92vw);
+    background: rgba(0,0,0,.55);
+    border: 2px solid rgba(255,80,80,.65);
+    border-radius: 18px;
+    padding: 22px;
+    text-align:center;
+    box-shadow: 0 30px 70px rgba(0,0,0,.6);
+  }
+  .stopBox h1{
+    margin:0 0 10px;
+    font-size: 42px;
+    letter-spacing: 1px;
+  }
+  .stopBox p{
+    margin:0;
+    font-size: 16px;
+    opacity:.85;
+  }
+
+  /* Quando entra nas operações extras: some normal */
+  body.extraMode .normalOnly{ display:none !important; }
+  body.extraMode #extraOnly{ display:block !important; }
+  #extraOnly{ display:none; }
+
+  @media (max-width: 740px){
+    .gridTop{ grid-template-columns: 1fr; }
+    .handRow{ grid-template-columns: 1fr; }
+    .saldoBig{ font-size: 28px; }
+    .calcLine{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<header>
+  <div class="headerRow">
+    <div class="headerTitle" id="headerTitle">📊 CALCULADORA DE GESTÃO</div>
+
+    <div class="zoomBox">
+      <span class="pill">Zoom</span>
+      <button class="zoomBtn" id="zb100" type="button">100%</button>
+      <button class="zoomBtn" id="zb80" type="button">80%</button>
+    </div>
+  </div>
+</header>
+
+<div id="app">
+  <div class="layout">
+    <!-- ESQUERDA -->
+    <div class="appMain">
+      <div class="container">
+
+        <!-- ===== NORMAL ===== -->
+        <div class="normalOnly">
+
+          <div class="gridTop">
+            <div class="box">
+              <div class="titleSmall">Saldo</div>
+              <div class="saldoBig" id="saldoTxt">R$ 0,00</div>
+
+              <div class="entryInfo">
+                <span class="pill" id="statusDia">Dia: NÃO INICIADO</span>
+                <span class="pill">Entrada <b id="entradaAtualTxt">1</b>/6</span>
+              </div>
+
+              <div class="calcLine">
+                <div class="stat">
+                  <div class="k">Lucro do dia</div>
+                  <div class="v" id="lucroDiaTxt">R$ 0,00</div>
+                </div>
+                <div class="stat">
+                  <div class="k">Meta do dia</div>
+                  <div class="v" id="metaTxt">R$ 0,00</div>
+                </div>
+                <div class="stat">
+                  <div class="k">Stop (30% banca)</div>
+                  <div class="v" id="stopTxt">R$ 0,00</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="row" style="align-items:flex-end;">
+                <div style="flex:1; min-width: 160px;">
+                  <div class="titleSmall">Depósito</div>
+                  <input id="depositoInput" type="number" step="0.01" placeholder="0,00" />
+                </div>
+                <button class="btnGreen" style="min-width:120px" onclick="aplicarDeposito()">Depositar</button>
+              </div>
+
+              <div style="height:10px"></div>
+
+              <div class="row" style="align-items:flex-end;">
+                <div style="flex:1; min-width: 160px;">
+                  <div class="titleSmall">Retirada</div>
+                  <input id="retiradaInput" type="number" step="0.01" placeholder="0,00" />
+                </div>
+                <button class="btnRed" style="min-width:120px" onclick="aplicarRetirada()">Retirar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="box" id="metaBox">
+            <div class="sectionHeader">
+              <div class="titleSmall">🎯 Meta do Dia</div>
+              <span class="pill" id="modoTxt">Modo: NORMAL</span>
+            </div>
+
+            <div class="row">
+              <button class="btnMeta" id="m10"  onclick="definirMeta(0.10, this)">10%</button>
+              <button class="btnMeta" id="m20"  onclick="definirMeta(0.20, this)">20%</button>
+              <button class="btnMeta" id="m30"  onclick="definirMeta(0.30, this)">30%</button>
+              <button class="btnMeta" id="m50"  onclick="definirMeta(0.50, this)">50%</button>
+              <button class="btnMeta" id="m100" onclick="definirMeta(1.00, this)">100%</button>
+            </div>
+
+            <div class="calcLine" style="margin-top:12px;">
+              <div class="stat">
+                <div class="k">Entrada (meta ÷ 6)</div>
+                <div class="v" id="entradaValTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Fixa (80%)</div>
+                <div class="v" id="fixaValTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Livre (20%)</div>
+                <div class="v" id="livreValTxt">R$ 0,00</div>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+              <button class="btnNeutral" style="width:100%;" onclick="finalizarDia()">Finalizar dia</button>
+            </div>
+          </div>
+
+          <div class="sameBlock">
+            <div class="sectionHeader">
+              <div class="titleSmall">Operação</div>
+              <span class="pill">NORMAL</span>
+            </div>
+
+            <div class="handRow">
+              <div class="handCard">
+                <div class="handTitle">
+                  <strong>MÃO FIXA (2x)</strong>
+                  <span class="pill">GREEN = + fixa</span>
+                </div>
+                <div class="handValue" id="fixaCardVal">R$ 0,00</div>
+                <div class="row">
+                  <button class="btnAction btnRed" id="fixaRed" onclick="selecionar('fixa','red')">RED</button>
+                  <button class="btnAction btnGreen" id="fixaGreen" onclick="selecionar('fixa','green')">GREEN</button>
+                </div>
+              </div>
+
+              <div class="handCard">
+                <div class="handTitle">
+                  <strong>MÃO LIVRE (20%)</strong>
+                  <span class="pill"></span>
+                </div>
+
+                <div class="titleSmall">Fechei em quantos X?</div>
+                <input id="fecheiX" type="number" step="0.1" placeholder="Ex: 50" />
+
+                <div class="handValue" id="livreCardVal" style="margin-top:10px;">R$ 0,00</div>
+
+                <div class="row">
+                  <button class="btnAction btnRed" id="livreRed" onclick="selecionar('livre','red')">RED</button>
+                  <button class="btnAction btnNeutral" id="livreNeutro" onclick="selecionar('livre','neutro')">NEUTRO</button>
+                </div>
+              </div>
+            </div>
+
+            <button class="btnPlay" onclick="play()">▶ PLAY</button>
+          </div>
+
+        </div>
+        <!-- ===== FIM NORMAL ===== -->
+
+
+        <!-- ===== OPERAÇÕES EXTRAS ONLY ===== -->
+        <div id="extraOnly">
+          <div class="box">
+            <div class="sectionHeader">
+              <div class="titleSmall">✈️ OPERAÇÕES EXTRAS</div>
+              <span class="pill">ATIVO</span>
+            </div>
+
+            <div class="calcLine">
+              <div class="stat">
+                <div class="k">Principal travado</div>
+                <div class="v" id="principalTravadoTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Extras (Total)</div>
+                <div class="v" id="extraTotalTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Lucro Extras</div>
+                <div class="v" id="extraLucroTxt">R$ 0,00</div>
+              </div>
+            </div>
+
+            <div class="calcLine" style="margin-top:12px;">
+              <div class="stat">
+                <div class="k">Protegido</div>
+                <div class="v" id="extraProtegidoTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Disponível (opera)</div>
+                <div class="v" id="extraDisponivelTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">STOP Trailing (30%)</div>
+                <div class="v" id="extraStopTxt">—</div>
+              </div>
+            </div>
+
+            <div class="calcLine" style="margin-top:12px;">
+              <div class="stat">
+                <div class="k">Entrada (disp ÷ 6)</div>
+                <div class="v" id="g_entradaValTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Fixa (80%)</div>
+                <div class="v" id="g_fixaValTxt">R$ 0,00</div>
+              </div>
+              <div class="stat">
+                <div class="k">Livre (20%)</div>
+                <div class="v" id="g_livreValTxt">R$ 0,00</div>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+              <button class="btnNeutral" style="width:100%;" onclick="finalizarDia()">Finalizar dia</button>
+            </div>
+
+            <div class="sameBlock" style="margin-top:12px;">
+              <div class="sectionHeader">
+                <div class="titleSmall">Operação</div>
+                <span class="pill">EXTRAS</span>
+              </div>
+
+              <div class="handRow">
+                <div class="handCard">
+                  <div class="handTitle">
+                    <strong>MÃO FIXA (2x)</strong>
+                    <span class="pill">GREEN = + fixa</span>
+                  </div>
+                  <div class="handValue" id="g_fixaCardVal">R$ 0,00</div>
+                  <div class="row">
+                    <button class="btnAction btnRed" id="g_fixaRed" onclick="selecionar('fixa','red')">RED</button>
+                    <button class="btnAction btnGreen" id="g_fixaGreen" onclick="selecionar('fixa','green')">GREEN</button>
+                  </div>
+                </div>
+
+                <div class="handCard">
+                  <div class="handTitle">
+                    <strong>MÃO LIVRE (20%)</strong>
+                    <span class="pill"></span>
+                  </div>
+
+                  <div class="titleSmall">Fechei em quantos X?</div>
+                  <input id="g_fecheiX" type="number" step="0.1" placeholder="Ex: 50" />
+
+                  <div class="handValue" id="g_livreCardVal" style="margin-top:10px;">R$ 0,00</div>
+
+                  <div class="row">
+                    <button class="btnAction btnRed" id="g_livreRed" onclick="selecionar('livre','red')">RED</button>
+                    <button class="btnAction btnNeutral" id="g_livreNeutro" onclick="selecionar('livre','neutro')">NEUTRO</button>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btnPlay" onclick="play()">▶ PLAY</button>
+            </div>
+          </div>
+        </div>
+        <!-- ===== FIM EXTRAS ===== -->
+
+      </div>
+    </div>
+
+    <!-- DIREITA -->
+    <div class="sidebar" id="rightSidebar" aria-hidden="false">
+      <div class="sidebarHead">
+        <div class="titleSmall">🎮 Aviator — SORTE NABET</div>
+        <a class="openBtn" href="https://sortenabet.bet.br/games/spribe/aviator" target="_blank" rel="noopener noreferrer">Abrir em nova aba</a>
+      </div>
+      <div style="font-size:12px;opacity:.8;margin-bottom:8px;">
+        Se não carregar abaixo, é porque o site bloqueia iframe no navegador comum.
+        No APP (Electron) isso é feito com BrowserView.
+      </div>
+      <div class="iframeWrap">
+        <iframe
+          id="rightIframe"
+          title="Aviator"
+          src="https://sortenabet.bet.br/games/spribe/aviator"
+          allow="fullscreen; autoplay; clipboard-read; clipboard-write"
+          referrerpolicy="no-referrer-when-downgrade"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-top-navigation">
+        </iframe>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="overlayStop" id="stopOverlay">
+  <div class="stopBox">
+    <h1>STOP ATINGIDO</h1>
+    <p>Gestão bloqueada até encerrar o dia.</p>
+    <p style="margin-top:10px; opacity:.75;">(Sem reset de stop.)</p>
+  </div>
+</div>
+
+<script>
+  const KEY = "gestao_calc_v5_extras";
+  const ZOOM_KEY = "gestao_calc_zoom";
+
+  function setZoom(z){
+    document.documentElement.style.setProperty("--uiZoom", String(z));
+    localStorage.setItem(ZOOM_KEY, String(z));
+
+    const b100 = document.getElementById("zb100");
+    const b80  = document.getElementById("zb80");
+    if(b100) b100.classList.toggle("active", z === 1);
+    if(b80)  b80.classList.toggle("active", z === 0.8);
+  }
+  function loadZoom(){
+    const z = Number(localStorage.getItem(ZOOM_KEY));
+    if(z === 1 || z === 0.8) setZoom(z);
+    else setZoom(0.8);
+  }
+
+  // ===== STATE =====
+  let saldo = 0.00;
+
+  let diaIniciado = false;
+  let bancaDia = 0.00;
+
+  let metaPct = 0;
+  let metaVal = 0;
+
+  let entradaVal = 0;
+  let fixaVal = 0;
+  let livreVal = 0;
+
+  let stopVal = 0;       // normal: 30% bancaDia
+  let lucroDia = 0;
+
+  let entradaAtual = 1;
+
+  let selFixa = null;   // 'red'|'green'
+  let selLivre = null;  // 'red'|'neutro'|'green'
+  let travadoStop = false;
+
+  // ===== OPERAÇÕES EXTRAS =====
+  let modoExtra = false;
+
+  let principalTravado = 0;
+
+  let extraE0 = 0;              // saldo inicial das extras (base)
+  let extraTotal = 0;           // protegido + disponível
+  let extraProtegido = 0;       // travado (não exposto)
+  let extraDisponivel = 0;      // opera (é o que muda nas entradas)
+  let extraLucro = 0;           // lucro só das extras (delta acumulado)
+
+  let extraPico = 0;            // P (máximo histórico do total)
+  let extraStopArmado = false;
+  let extraStopLevel = 0;       // P * (1 - 0.30)
+
+  // ===== Helpers =====
+  function brl(v){
+    return (Number(v||0)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+  function round2(v){
+    v = Number(v||0);
+    return Math.round((v + Number.EPSILON) * 100) / 100;
+  }
+  function clamp0(v){
+    v = Number(v||0);
+    return v < 0 ? 0 : v;
+  }
+  function tocarBeep(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "square";
+      o.frequency.value = 440;
+      g.gain.value = 0.08;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      setTimeout(()=>{ o.stop(); ctx.close(); }, 350);
+    }catch(e){}
+  }
+
+  function save(){
+    const payload = {
+      saldo, diaIniciado, bancaDia,
+      metaPct, metaVal,
+      entradaVal, fixaVal, livreVal,
+      stopVal, lucroDia, entradaAtual,
+      selFixa, selLivre, travadoStop,
+      modoExtra, principalTravado,
+      extraE0, extraTotal, extraProtegido, extraDisponivel, extraLucro,
+      extraPico, extraStopArmado, extraStopLevel,
+      fecheiX: document.getElementById("fecheiX")?.value || "",
+      g_fecheiX: document.getElementById("g_fecheiX")?.value || ""
+    };
+    localStorage.setItem(KEY, JSON.stringify(payload));
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return;
+      const s = JSON.parse(raw);
+
+      saldo = Number(s.saldo ?? 0);
+
+      diaIniciado = !!s.diaIniciado;
+      bancaDia = Number(s.bancaDia ?? 0);
+
+      metaPct = Number(s.metaPct ?? 0);
+      metaVal = Number(s.metaVal ?? 0);
+
+      entradaVal = Number(s.entradaVal ?? 0);
+      fixaVal = Number(s.fixaVal ?? 0);
+      livreVal = Number(s.livreVal ?? 0);
+
+      stopVal = Number(s.stopVal ?? 0);
+      lucroDia = Number(s.lucroDia ?? 0);
+
+      entradaAtual = Number(s.entradaAtual ?? 1);
+
+      selFixa = s.selFixa ?? null;
+      selLivre = s.selLivre ?? null;
+      travadoStop = !!s.travadoStop;
+
+      modoExtra = !!s.modoExtra;
+      principalTravado = Number(s.principalTravado ?? 0);
+
+      extraE0 = Number(s.extraE0 ?? 0);
+      extraTotal = Number(s.extraTotal ?? 0);
+      extraProtegido = Number(s.extraProtegido ?? 0);
+      extraDisponivel = Number(s.extraDisponivel ?? 0);
+      extraLucro = Number(s.extraLucro ?? 0);
+
+      extraPico = Number(s.extraPico ?? 0);
+      extraStopArmado = !!s.extraStopArmado;
+      extraStopLevel = Number(s.extraStopLevel ?? 0);
+
+      window.__restoreX = String(s.fecheiX ?? "");
+      window.__restoreGX = String(s.g_fecheiX ?? "");
+    }catch(e){}
+  }
+
+  // ===== Regras de valor mínimo (Aviator min R$ 1,00) =====
+  function entradaMin1Base(v){
+    return Math.max(1, round2(v));
+  }
+  function calcEntradaPorDisponivel(disponivel){
+    disponivel = round2(disponivel);
+    if(disponivel < 1) return round2(disponivel);
+    const base = entradaMin1Base(disponivel / 6);
+    return Math.min(base, disponivel);
+  }
+  function recalcularNormalPorMeta(){
+    const e = calcEntradaPorDisponivel(metaVal);
+    entradaVal = e;
+    fixaVal = round2(entradaVal * 0.80);
+    livreVal = round2(entradaVal * 0.20);
+  }
+  function recalcularExtrasPorDisponivel(){
+    const e = calcEntradaPorDisponivel(extraDisponivel);
+    entradaVal = e;
+    fixaVal = round2(entradaVal * 0.80);
+    livreVal = round2(entradaVal * 0.20);
+  }
+
+  // ===== Escada de proteção =====
+  const MULT_STOP_ARMAR = 2.0833333333;  // 50/24
+  const MULT_P30 = 4.1666666667;         // 100/24
+  const MULT_P333 = 6.25;                // 150/24
+  const MULT_P40 = 8.3333333333;         // 200/24
+  const MULT_P50 = 12.5;                 // 300/24
+
+  const EXTRA_ACTIVATION_OVER_META_PCT = 0.80;
+
+  function pctProtecaoPorMultiplicador(mult){
+    if(mult >= MULT_P50) return 0.50;
+    if(mult >= MULT_P40) return 0.40;
+    if(mult >= MULT_P333) return 1/3;
+    if(mult >= MULT_P30) return 0.30;
+    return 0;
+  }
+
+  function aplicarProtecaoEStopExtras(){
+    if(!modoExtra) return;
+    if(extraE0 <= 0) return;
+
+    extraTotal = round2(extraProtegido + extraDisponivel);
+    extraPico = Math.max(extraPico, extraTotal);
+
+    const mult = extraTotal / extraE0;
+
+    if(mult >= MULT_STOP_ARMAR) extraStopArmado = true;
+
+    const pct = pctProtecaoPorMultiplicador(mult);
+    if(pct > 0){
+      const alvo = round2(extraPico * pct);
+      if(alvo > extraProtegido){
+        extraProtegido = alvo;
+        extraDisponivel = clamp0(round2(extraTotal - extraProtegido));
+      }
+    }
+
+    if(extraStopArmado){
+      extraStopLevel = round2(extraPico * (1 - 0.30));
+      if(extraTotal <= extraStopLevel){
+        travadoStop = true;
+        tocarBeep();
+      }
+    }else{
+      extraStopLevel = 0;
+    }
+
+    recalcularExtrasPorDisponivel();
+  }
+
+  function entrarModoExtra(){
+    modoExtra = true;
+
+    principalTravado = round2(bancaDia + metaVal);
+
+    const sobra = clamp0(round2(saldo - principalTravado));
+
+    extraE0 = round2(sobra);
+    extraProtegido = 0;
+    extraDisponivel = round2(sobra);
+    extraLucro = 0;
+
+    extraTotal = round2(extraProtegido + extraDisponivel);
+    extraPico = extraTotal;
+
+    extraStopArmado = false;
+    extraStopLevel = 0;
+
+    recalcularExtrasPorDisponivel();
+
+    atualizarUI();
+  }
+
+  function checarMetaEEntrarExtras(){
+    if(!diaIniciado) return;
+    if(metaVal <= 0) return;
+
+    const alvoExtras = round2(metaVal * (1 + EXTRA_ACTIVATION_OVER_META_PCT));
+    if(!modoExtra && lucroDia >= alvoExtras){
+      entrarModoExtra();
+    }
+  }
+
+  function bloquearSeStop(){
+    if(!diaIniciado) return;
+
+    if(!modoExtra){
+      if(stopVal > 0 && lucroDia <= -stopVal){
+        travadoStop = true;
+        tocarBeep();
+      }
+      return;
+    }
+    aplicarProtecaoEStopExtras();
+  }
+
+  // ===== UI =====
+  function limparAtivosMeta(){
+    ["m10","m20","m30","m50","m100"].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.classList.remove("active");
+    });
+  }
+  function limparAtivos(tipo){
+    const map = {
+      fixa: ["fixaRed","fixaGreen","g_fixaRed","g_fixaGreen"],
+      livre: ["livreRed","livreNeutro","g_livreRed","g_livreNeutro"]
+    };
+    (map[tipo]||[]).forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.classList.remove("active");
+    });
+  }
+
+  function atualizarUI(){
+    document.body.classList.toggle("extraMode", modoExtra);
+
+    document.getElementById("headerTitle").textContent =
+      modoExtra ? "✈️ OPERAÇÕES EXTRAS" : "📊 CALCULADORA DE GESTÃO";
+
+    document.getElementById("modoTxt").textContent =
+      modoExtra ? "Modo: EXTRAS" : "Modo: NORMAL";
+
+    // NORMAL
+    document.getElementById("saldoTxt").innerText = brl(saldo);
+    document.getElementById("statusDia").innerText = diaIniciado ? "Dia: INICIADO" : "Dia: NÃO INICIADO";
+    document.getElementById("lucroDiaTxt").innerText = brl(lucroDia);
+    document.getElementById("metaTxt").innerText = brl(metaVal);
+    document.getElementById("stopTxt").innerText = brl(stopVal);
+    document.getElementById("entradaAtualTxt").innerText = String(entradaAtual);
+
+    document.getElementById("entradaValTxt").innerText = brl(entradaVal);
+    document.getElementById("fixaValTxt").innerText = brl(fixaVal);
+    document.getElementById("livreValTxt").innerText = brl(livreVal);
+
+    document.getElementById("fixaCardVal").innerText = brl(fixaVal);
+    document.getElementById("livreCardVal").innerText = brl(livreVal);
+
+    // EXTRAS
+    document.getElementById("principalTravadoTxt").innerText = brl(principalTravado);
+    document.getElementById("extraTotalTxt").innerText = brl(extraProtegido + extraDisponivel);
+    document.getElementById("extraProtegidoTxt").innerText = brl(extraProtegido);
+    document.getElementById("extraDisponivelTxt").innerText = brl(extraDisponivel);
+    document.getElementById("extraLucroTxt").innerText = brl(extraLucro);
+
+    document.getElementById("extraStopTxt").innerText =
+      (!extraStopArmado) ? "NÃO ARMADO" : brl(extraStopLevel);
+
+    document.getElementById("g_entradaValTxt").innerText = brl(entradaVal);
+    document.getElementById("g_fixaValTxt").innerText = brl(fixaVal);
+    document.getElementById("g_livreValTxt").innerText = brl(livreVal);
+    document.getElementById("g_fixaCardVal").innerText = brl(fixaVal);
+    document.getElementById("g_livreCardVal").innerText = brl(livreVal);
+
+    // Seleções
+    ["fixaRed","fixaGreen","g_fixaRed","g_fixaGreen"].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.classList.toggle("active",
+        (selFixa === "red" && id.includes("Red")) ||
+        (selFixa === "green" && id.includes("Green"))
+      );
+    });
+    ["livreRed","livreNeutro","g_livreRed","g_livreNeutro"].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.classList.toggle("active",
+        (selLivre === "red" && id.includes("Red")) ||
+        (selLivre === "neutro" && id.includes("Neutro"))
+      );
+    });
+
+    document.getElementById("stopOverlay").style.display = travadoStop ? "flex" : "none";
+
+    const disabled = travadoStop;
+    document.querySelectorAll("#app button, #app input").forEach(el=>{ el.disabled = disabled; });
+    document.querySelectorAll("button.btnNeutral").forEach(b=>{ b.disabled = false; });
+
+    save();
+  }
+
+  // ===== Ações =====
+  function aplicarDeposito(){
+    if(travadoStop) return;
+    const v = Number(document.getElementById("depositoInput").value || 0);
+    if(v <= 0) return;
+    saldo = round2(saldo + v);
+    document.getElementById("depositoInput").value = "";
+    atualizarUI();
+  }
+
+  function aplicarRetirada(){
+    if(travadoStop) return;
+    const v = Number(document.getElementById("retiradaInput").value || 0);
+    if(v <= 0) return;
+    saldo = clamp0(round2(saldo - v));
+    document.getElementById("retiradaInput").value = "";
+    atualizarUI();
+  }
+
+  function definirMeta(pct, btn){
+    if(travadoStop) return;
+    if(saldo <= 0){
+      alert("Deposite um valor para iniciar.");
+      return;
+    }
+
+    if(!diaIniciado){
+      diaIniciado = true;
+      bancaDia = round2(saldo);
+      lucroDia = 0;
+      entradaAtual = 1;
+
+      modoExtra = false;
+      principalTravado = 0;
+
+      extraE0 = 0;
+      extraTotal = 0;
+      extraProtegido = 0;
+      extraDisponivel = 0;
+      extraLucro = 0;
+      extraPico = 0;
+      extraStopArmado = false;
+      extraStopLevel = 0;
+    }
+
+    metaPct = pct;
+    metaVal = round2(bancaDia * metaPct);
+    stopVal = round2(bancaDia * 0.30);
+
+    recalcularNormalPorMeta();
+
+    limparAtivosMeta();
+    btn.classList.add("active");
+    atualizarUI();
+  }
+
+  function selecionar(tipo, valor){
+    if(travadoStop) return;
+    if(!diaIniciado){
+      alert("Escolha a meta do dia para iniciar.");
+      return;
+    }
+
+    if(tipo === "fixa"){
+      selFixa = valor;
+      limparAtivos("fixa");
+      const ids = (modoExtra ? ["g_fixaRed","g_fixaGreen"] : ["fixaRed","fixaGreen"]);
+      ids.forEach(id=>{
+        const el = document.getElementById(id);
+        if(!el) return;
+        if(valor==="red" && id.includes("Red")) el.classList.add("active");
+        if(valor==="green" && id.includes("Green")) el.classList.add("active");
+      });
+    }
+
+    if(tipo === "livre"){
+      selLivre = valor;
+      limparAtivos("livre");
+      const ids = (modoExtra ? ["g_livreRed","g_livreNeutro"] : ["livreRed","livreNeutro"]);
+      ids.forEach(id=>{
+        const el = document.getElementById(id);
+        if(!el) return;
+        if(valor==="red" && id.includes("Red")) el.classList.add("active");
+        if(valor==="neutro" && id.includes("Neutro")) el.classList.add("active");
+      });
+    }
+
+    atualizarUI();
+  }
+
+  function getX(){
+    return modoExtra
+      ? Number(document.getElementById("g_fecheiX").value || 0)
+      : Number(document.getElementById("fecheiX").value || 0);
+  }
+  function clearX(){
+    if(modoExtra) document.getElementById("g_fecheiX").value = "";
+    else document.getElementById("fecheiX").value = "";
+  }
+
+  function play(){
+    if(travadoStop) return;
+
+    if(!diaIniciado){
+      alert("Escolha a meta do dia para iniciar.");
+      return;
+    }
+    if(metaVal <= 0){
+      alert("Defina uma meta (%).");
+      return;
+    }
+
+    const x = getX();
+
+    if(!selFixa){
+      alert("Marque o resultado da Mão Fixa.");
+      return;
+    }
+
+    if(!selLivre){
+      if(x > 1) selLivre = "green";
+      else{
+        alert("Marque a Mão Livre (RED/NEUTRO) ou digite X.");
+        return;
+      }
+    }
+
+    let delta = 0;
+
+    delta += (selFixa === "green") ? fixaVal : -fixaVal;
+
+    if(selLivre === "neutro"){
+      // 0
+    }else if(selLivre === "red"){
+      delta -= livreVal;
+    }else if(selLivre === "green"){
+      if(x > 1) delta += round2(livreVal * (x - 1));
+    }
+
+    if(!modoExtra){
+      saldo = clamp0(round2(saldo + delta));
+      lucroDia = round2(lucroDia + delta);
+      checarMetaEEntrarExtras();
+    }else{
+      extraDisponivel = clamp0(round2(extraDisponivel + delta));
+      extraLucro = round2(extraLucro + delta);
+
+      extraTotal = round2(extraProtegido + extraDisponivel);
+      saldo = clamp0(round2(principalTravado + extraTotal));
+
+      aplicarProtecaoEStopExtras();
+    }
+
+    entradaAtual++;
+    if(entradaAtual > 6) entradaAtual = 1;
+
+    selFixa = null;
+    selLivre = null;
+    limparAtivos("fixa");
+    limparAtivos("livre");
+    clearX();
+
+    bloquearSeStop();
+    atualizarUI();
+  }
+
+  function finalizarDia(){
+    travadoStop = false;
+
+    diaIniciado = false;
+    bancaDia = 0;
+
+    metaPct = 0;
+    metaVal = 0;
+
+    entradaVal = 0;
+    fixaVal = 0;
+    livreVal = 0;
+
+    stopVal = 0;
+    lucroDia = 0;
+
+    entradaAtual = 1;
+
+    selFixa = null;
+    selLivre = null;
+
+    modoExtra = false;
+    principalTravado = 0;
+
+    extraE0 = 0;
+    extraTotal = 0;
+    extraProtegido = 0;
+    extraDisponivel = 0;
+    extraLucro = 0;
+    extraPico = 0;
+    extraStopArmado = false;
+    extraStopLevel = 0;
+
+    limparAtivosMeta();
+    limparAtivos("fixa");
+    limparAtivos("livre");
+    clearX();
+
+    atualizarUI();
+  }
+
+  // ===== Boot =====
+  loadZoom();
+  load();
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const b100 = document.getElementById("zb100");
+    const b80  = document.getElementById("zb80");
+    if(b100) b100.addEventListener("click", ()=> setZoom(1));
+    if(b80)  b80.addEventListener("click",  ()=> setZoom(0.8));
+
+    if(window.__restoreX != null && document.getElementById("fecheiX"))
+      document.getElementById("fecheiX").value = window.__restoreX;
+
+    if(window.__restoreGX != null && document.getElementById("g_fecheiX"))
+      document.getElementById("g_fecheiX").value = window.__restoreGX;
+
+    const fx = document.getElementById("fecheiX");
+    if(fx){
+      fx.addEventListener("input", ()=>{
+        if(travadoStop || !diaIniciado) return;
+        const x = Number(fx.value || 0);
+        if(x > 1){ selLivre = "green"; limparAtivos("livre"); }
+        else if(selLivre === "green"){ selLivre = null; }
+        atualizarUI();
+      });
+    }
+
+    const gx = document.getElementById("g_fecheiX");
+    if(gx){
+      gx.addEventListener("input", ()=>{
+        if(travadoStop || !diaIniciado) return;
+        const x = Number(gx.value || 0);
+        if(x > 1){ selLivre = "green"; limparAtivos("livre"); }
+        else if(selLivre === "green"){ selLivre = null; }
+        atualizarUI();
+      });
+    }
+
+    atualizarUI();
+  });
+
+  window.aplicarDeposito = aplicarDeposito;
+  window.aplicarRetirada = aplicarRetirada;
+  window.definirMeta = definirMeta;
+  window.selecionar = selecionar;
+  window.play = play;
+  window.finalizarDia = finalizarDia;
+</script>
+
+</body>
+</html>

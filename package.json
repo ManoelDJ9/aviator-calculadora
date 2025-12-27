@@ -1,0 +1,14 @@
+{
+  "name": "aviator-calculadora",
+  "version": "1.0.0",
+  "description": "Calculadora de gestão (esquerda) + Aviator (direita) na mesma janela (Electron).",
+  "main": "main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}
