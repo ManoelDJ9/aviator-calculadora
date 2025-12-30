@@ -2,6 +2,6 @@
 > aviator-calculadora@1.0.0 start
 > electron .
 
-[4406:1227/134809.115047:ERROR:ui/ozone/platform/x11/ozone_platform_x11.cc:249] Missing X server or $DISPLAY
-[4406:1227/134809.115123:ERROR:ui/aura/env.cc:257] The platform failed to initialize.  Exiting.
+[2452:1230/145428.976857:ERROR:ui/ozone/platform/x11/ozone_platform_x11.cc:249] Missing X server or $DISPLAY
+[2452:1230/145428.976920:ERROR:ui/aura/env.cc:257] The platform failed to initialize.  Exiting.
 /app/node_modules/electron/dist/electron exited with signal SIGSEGV
