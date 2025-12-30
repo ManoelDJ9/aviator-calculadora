@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, BrowserView, session, shell, dialog } = require("electron");
+const { app, BrowserWindow, BrowserView, session, shell, dialog, ipcMain } = require("electron");
 
 let win;
 let leftView;
@@ -117,4 +117,13 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// Listener para receber os dados de cashout do script de pré-carregamento.
+ipcMain.on('cashout-data', (event, data) => {
+  console.log('--- Dados de Cashout Recebidos ---');
+  console.log(`Valor do Cashout: ${data.cashout}`);
+  console.log(`Multiplicador: ${data.multiplier}`);
+  console.log('------------------------------------');
+  // Futuramente, esses dados poderiam ser salvos em um arquivo ou enviados para a calculadora.
 });

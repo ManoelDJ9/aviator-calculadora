@@ -1,60 +1,44 @@
-# Aviator + Calculadora (Electron)
+# Aviator + Calculadora com Scraper de Cashout
 
-## Como o projeto deve funcionar (visão final)
+## Visão Geral
 
-- O aplicativo abre UMA ÚNICA JANELA (uma única “tela”).
-- A tela é dividida em duas partes:
-  - Lado esquerdo: Calculadora de Gestão (HTML local do projeto).
-  - Lado direito: O jogo Aviator carregado diretamente dentro do app.
-- Nada deve abrir “em outra aba” por padrão.
-- O usuário consegue:
-  - usar a calculadora normalmente,
-  - e ao mesmo tempo ver/jogar o Aviator no painel da direita,
-  - tudo sem sair da mesma tela.
+Esta é uma aplicação Electron que exibe uma calculadora de gerenciamento local ao lado do jogo Aviator da Sorte na Bet. A aplicação inclui um scraper integrado que detecta e registra automaticamente seus valores de cashout e multiplicadores da seção "Minhas Apostas".
 
-## Por que Electron (e não iframe)
-- Muitos sites de cassino bloqueiam iframe por segurança (CSP, X-Frame-Options, etc).
-- No Electron, usamos BrowserView, que é como se fossem duas abas internas do navegador,
-  lado a lado, dentro da mesma janela.
-- Isso replica o comportamento dos “apps que funcionam”.
+## Como o Scraper Funciona
 
-## Requisitos
-- Windows 10/11
-- Node.js instalado (LTS recomendado)
+O scraper opera em segundo plano, injetando um script na página do jogo. Ele não interage com sua conta nem realiza apostas. Sua única função é observar a lista "Minhas Apostas".
 
-## Instalação
-1) Abra a pasta do projeto no terminal.
-2) Rode:
-   npm install
-3) Depois:
-   npm start
+1.  O script aguarda até que a lista "Minhas Apostas" esteja visível na página.
+2.  Ele usa um `MutationObserver` para detectar quando uma nova aposta concluída é adicionada à lista.
+3.  Quando uma nova aposta é detectada, o script a identifica procurando pelo elemento multiplicador (por exemplo, `1.50x`).
+4.  Em seguida, ele procura pelo valor do cashout em R$ associado a essa aposta.
+5.  Os dados extraídos (valor do cashout e multiplicador) são enviados para o processo principal do Electron e exibidos no console/terminal onde você iniciou a aplicação.
 
-## Onde fica cada parte
-- Calculadora (esquerda):
-  `renderer/calc.html`
-- Aviator (direita):
-  `config.json` -> chave `GAME_URL`
+## Atualizando os Seletores (Se o Scraper Parar de Funcionar)
 
-## Observação importante sobre login
-- Se o site exigir login, você vai logar DENTRO do painel da direita.
-- Como usamos partition persistente (`persist:aviator`), os cookies/sessão ficam salvos.
-- Assim, quando fechar e abrir o app, pode continuar logado.
+Sites de jogos podem mudar seu código HTML, o que pode quebrar o scraper. Se você perceber que os valores de cashout não estão mais sendo registrados, precisará atualizar os "seletores" no arquivo `preload.js`.
 
-## Se o Aviator não carregar
-Existem 3 motivos comuns:
-1) O site bloqueia ambiente “embutido” (menos comum no Electron, mas pode ocorrer).
-2) Precisa de login e/ou captcha.
-3) A URL correta é a “final” da Spribe (aviator-next.spribegaming.com/?user=...&token=...).
+**Seletores Atuais:**
+*   Contêiner de "Minhas Apostas": `app-my-bets`
+*   Elemento do Multiplicador: `.bubble-multiplier`
 
-Nesse caso, a solução mais forte é:
-- Abrir o Aviator no navegador,
-- pegar a URL final com token (a que você mostrou no iframe),
-- colar no `GAME_URL` do `config.json`.
-Isso normalmente faz o jogo carregar direto.
+**Como Encontrar Novos Seletores:**
 
-## Objetivo do projeto
-- Entregar um app que:
-  - mantém a calculadora fixa e acessível,
-  - e mantém o Aviator ao lado,
-  - tudo em UMA única tela,
-  - com layout estável e redimensionável.
+1.  **Habilite as Ferramentas de Desenvolvedor:** No arquivo `main.js`, certifique-se de que a seguinte linha **não** esteja comentada (sem `//` no início):
+    ```javascript
+    rightView.webContents.openDevTools({ mode: "detach" });
+    ```
+2.  **Inicie a Aplicação:** Execute `npm start`. A janela do jogo e uma janela separada de "Ferramentas de Desenvolvedor" (com código) devem abrir.
+3.  **Use o Inspetor:** Na janela de código, clique no ícone do inspetor (um quadrado com um ponteiro de mouse).
+4.  **Selecione o Elemento:** Mova o mouse para a janela do jogo e clique na área que você deseja inspecionar (por exemplo, a lista "Minhas Apostas" ou um multiplicador `1.50x`).
+5.  **Encontre a Classe ou Tag:** A janela de código mostrará o HTML do elemento. Procure por um atributo `class="..."` ou um nome de tag (como `app-my-bets`) que pareça ser o identificador principal.
+6.  **Atualize o `preload.js`:** Abra o arquivo `preload.js` e substitua os valores antigos em `MY_BETS_CONTAINER_SELECTOR` ou `MULTIPLIER_SELECTOR` pelos novos que você encontrou.
+7.  **Teste:** Salve o arquivo e reinicie a aplicação para ver se o scraper funciona novamente.
+
+## Executando a Aplicação
+
+Para executar a aplicação, use o seguinte comando no seu terminal:
+
+```bash
+npm start
+```
